@@ -1,0 +1,170 @@
+<html>
+    <head>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200&display=swap');
+
+            body{
+                background: black;
+                margin: 0;
+                font-family: 'Roboto Mono', monospace;
+            }
+
+            #logs{
+                height: 80%;
+                width: 90%;
+                background: rgb(1, 0, 48);
+                color: white;
+                border-radius: 12px 12px 0 0;
+                padding: 10px;
+                font-family: 'Roboto Mono', monospace;
+                font-size: 12px;
+                text-align: left;
+                border: white solid 2px;
+                border-bottom: none;
+                word-wrap: break-word;
+                overflow-y: auto;
+            }
+
+            #entertext{
+                width: 90%;
+                background: rgb(2, 0, 133);
+                color: white;
+                border-radius: 0 0 12px 12px;
+                padding: 10px;
+                font-family: 'Roboto Mono', monospace;
+                text-align: left;
+                border: white solid 2px;
+                border-top: none;
+            }
+
+            .text{
+                background: none;
+                color: white;
+                border: none;
+                font-family: 'Roboto Mono', monospace;
+                outline: none;
+                width: calc(100% - 25px);
+            }
+
+            .topnav {
+                background-color: #333;
+                overflow: hidden;
+            }
+
+            .topnav a {
+                float: left;
+                display: block;
+                color: #f2f2f2;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                font-size: 17px;
+            }
+
+            .active {
+                background-color: rgb(2, 0, 133);
+                color: white;
+            }
+
+            #logs::-webkit-scrollbar {
+                display: none;
+            }
+
+            #serverBtn{
+                cursor: pointer;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="topnav">
+            <a href="/p/v1/home" class="active">Home</a>
+            <a href="/p/v1/console">Console</a>
+            <a href="/p/v1/mods">Mods</a>
+            <a href="/p/v1/players">Players</a>
+
+            <a id="serverBtn" style="float: right;">Start Server</a>
+        </div><br />
+
+        <center>
+            <div id="main">
+                <div id="config"></div>
+            </div>
+        </center>
+
+        <script type="text/javascript">
+            let load = () => {
+                fetch('/api/v1/loadlogs').then(data => data.json()).then(data => {
+                    const ws = new WebSocket('ws://localhost:8080');
+
+                    let serverStates = {
+                        offline: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: red;"></span>',
+                        starting: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: orange;"></span>',
+                        online: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: green;"></span>',
+                        stopping: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: yellow;"></span>',
+                    }
+
+                    let status = data.status;
+
+                    let setBtn = () => {
+                        let btn = document.getElementById('serverBtn');
+                        let btnTxt = '';
+
+                        if(status === 'offline'){
+                            btnTxt = 'Start Server'
+                        } else if(status === 'starting'){
+                            btnTxt = 'Starting...'
+                        } else if(status === 'online'){
+                            btnTxt = 'Online!'
+                        } else if(status === 'stopping'){
+                            btnTxt = 'Stopping Server'
+                        }
+
+                        btn.innerHTML = serverStates[status] + ' ' + btnTxt;
+                    }
+
+                    setBtn()
+
+                    document.getElementById('serverBtn').onclick = () => {
+                        if(status === 'offline'){
+                            ws.send('start')
+                            status = 'starting'
+                        }
+
+                        setBtn();
+                    }
+
+                    ws.onopen = function(){};
+                    ws.onmessage = function(msg){
+                        if(msg.data !== 'æ:stop'){
+                            let splitMsg = msg.data.split(' ');
+                            splitMsg.shift();
+
+                            let checkSum = splitMsg.join(' ');
+                            checkSum = checkSum.split('(').join(')');
+                            checkSum = checkSum.split(')');
+
+                            checkSum = checkSum[0]+checkSum[2];
+                            if(checkSum.includes('[Server thread/INFO]: Done ! For help, type "help"')){
+                                status = 'online'
+                                setBtn();
+                            }
+                        } else{
+                            logs.innerHTML = ''
+                            status = 'offline'
+                            setBtn();
+                        }
+                    };
+                })
+
+                fetch('/api/v1/config').then(data => data.json()).then(data => {
+                    let names = Object.keys(data);
+                    let values = Object.values(data);
+
+                    console.log(names, values)
+                })
+            }
+
+            load();
+        </script>
+    </body>
+</html>

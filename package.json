@@ -1,0 +1,13 @@
+{
+  "dependencies": {
+    "ejs": "^3.1.6",
+    "express": "^4.17.2",
+    "minecraft_head": "^1.2.21",
+    "multer": "^1.4.4",
+    "node-fetch": "^2.6.6",
+    "properties-to-json": "^0.2.1",
+    "request": "^2.88.2",
+    "skinview3d": "^2.2.0",
+    "ws": "^8.4.2"
+  }
+}

@@ -1,0 +1,231 @@
+<html>
+    <head>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@200&display=swap');
+
+            body{
+                background: black;
+                margin: 0;
+                font-family: 'Roboto Mono', monospace;
+            }
+
+            #main{
+                width: 90%;
+                background: rgb(1, 0, 48);
+                color: white;
+                border-radius: 12px;
+                padding: 10px;
+                font-family: 'Roboto Mono', monospace;
+                font-size: 12px;
+                text-align: left;
+                border: white solid 2px;
+                word-wrap: break-word;
+                overflow-y: auto;
+            }
+
+            #logs{
+                height: 80%;
+                width: 90%;
+                background: rgb(1, 0, 48);
+                color: white;
+                border-radius: 12px 12px 0 0;
+                padding: 10px;
+                font-family: 'Roboto Mono', monospace;
+                font-size: 12px;
+                text-align: left;
+                border: white solid 2px;
+                border-bottom: none;
+                word-wrap: break-word;
+                overflow-y: auto;
+            }
+
+            #entertext{
+                width: 90%;
+                background: rgb(2, 0, 133);
+                color: white;
+                border-radius: 0 0 12px 12px;
+                padding: 10px;
+                font-family: 'Roboto Mono', monospace;
+                text-align: left;
+                border: white solid 2px;
+                border-top: none;
+            }
+
+            .text{
+                background: none;
+                color: white;
+                border: none;
+                font-family: 'Roboto Mono', monospace;
+                outline: none;
+                width: calc(100% - 25px);
+            }
+
+            .topnav {
+                background-color: #333;
+                overflow: hidden;
+            }
+
+            .topnav a {
+                float: left;
+                display: block;
+                color: #f2f2f2;
+                text-align: center;
+                padding: 14px 16px;
+                text-decoration: none;
+                font-size: 17px;
+            }
+
+            .active {
+                background-color: rgb(2, 0, 133);
+                color: white;
+            }
+
+            #logs::-webkit-scrollbar {
+                display: none;
+            }
+
+            #serverBtn{
+                cursor: pointer;
+            }
+
+            .mod{
+                font-size: 15px;
+                width: 100%;
+            }
+
+            button{
+                color: white;
+                padding: 15px 35px;
+                border: none;
+                border-radius: 12px;
+                background: rgb(0, 13, 126);
+            }
+        </style>
+        <script src="/assets/icons.js"></script>
+        <script src="/assets/skins.js"></script>
+    </head>
+    <body>
+        <div class="topnav">
+            <a href="/p/v1/home">Home</a>
+            <a href="/p/v1/console">Console</a>
+            <a href="/p/v1/mods">Mods</a>
+            <a href="/p/v1/players" class="active">Players</a>
+
+            <a id="serverBtn" style="float: right;">Start Server</a>
+        </div><br />
+
+        <center>
+            <div id="main">
+                <div id="mods"></div>
+            </div>
+        </center>
+
+        <script type="text/javascript">
+            let upload = () => {
+                window.location = '/p/v1/mods/upload'
+            }
+
+            let load = () => {
+                fetch('/api/v1/loadlogs').then(data => data.json()).then(data => {
+                    const ws = new WebSocket('ws://localhost:8080');
+
+                    let serverStates = {
+                        offline: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: red;"></span>',
+                        starting: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: orange;"></span>',
+                        online: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: green;"></span>',
+                        stopping: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: yellow;"></span>',
+                    }
+
+                    let status = data.status;
+
+                    let setBtn = () => {
+                        let btn = document.getElementById('serverBtn');
+                        let btnTxt = '';
+
+                        if(status === 'offline'){
+                            btnTxt = 'Start Server'
+                        } else if(status === 'starting'){
+                            btnTxt = 'Starting...'
+                        } else if(status === 'online'){
+                            btnTxt = 'Online!'
+                        } else if(status === 'stopping'){
+                            btnTxt = 'Stopping Server'
+                        }
+
+                        btn.innerHTML = serverStates[status] + ' ' + btnTxt;
+                    }
+
+                    setBtn()
+
+                    document.getElementById('serverBtn').onclick = () => {
+                        if(status === 'offline'){
+                            ws.send('start')
+                            status = 'starting'
+                        }
+
+                        setBtn();
+                    }
+
+                    ws.onopen = function(){};
+                    ws.onmessage = function(msg){
+                        if(msg.data !== 'æ:stop'){
+                            let splitMsg = msg.data.split(' ');
+                            splitMsg.shift();
+
+                            let checkSum = splitMsg.join(' ');
+                            checkSum = checkSum.split('(').join(')');
+                            checkSum = checkSum.split(')');
+
+                            checkSum = checkSum[0]+checkSum[2];
+                            if(checkSum.includes('[Server thread/INFO]: Done ! For help, type "help"')){
+                                status = 'online'
+                                setBtn();
+                            }
+                        } else{
+                            logs.innerHTML = ''
+                            status = 'offline'
+                            setBtn();
+                        }
+                    };
+                })
+
+                let players = []
+                fetch('/api/v1/players').then(data => data.json()).then(mods => {
+                    let text = '';
+
+                    mods.forEach(( m, i ) => {
+                        if(m !== ''){
+                            fetch('/api/v1/mc?q='+m).then(data => data.json()).then(data => {
+                                players.push(data);
+                                text += '<div class="mod"><i class="fas fa-user"></i> '+data.data.name+', UUID: '+data.data.uuid+'<br><canvas id="skin_container:'+data.data.name+'"></canvas></div>';
+
+                                if(i >= mods.length - 1){
+                                    document.getElementById('mods').innerHTML = text
+
+                                    players.forEach(p => {
+                                        let skinViewer = new skinview3d.SkinViewer({
+                                            canvas: document.getElementById("skin_container:"+p.data.name),
+                                            width: 300,
+                                            height: 400,
+                                            skin: '/api/v1/tex/'+p.skin.skin.replace('http://textures.minecraft.net/texture/', '')
+                                        });
+
+                                        let control = skinview3d.createOrbitControls(skinViewer);
+                                        control.enableRotate = true;
+                                        control.enableZoom = true;
+                                        control.enablePan = false;
+
+                                        let rotate = skinViewer.animations.add(skinview3d.RotatingAnimation);
+                                        let walk = skinViewer.animations.add(skinview3d.WalkingAnimation);
+                                    })
+                                }
+                            })
+                        }
+                    })
+                })
+            }
+
+            load();
+        </script>
+    </body>
+</html>
