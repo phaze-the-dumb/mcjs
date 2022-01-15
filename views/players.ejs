@@ -127,7 +127,7 @@
 
             let load = () => {
                 fetch('/api/v1/loadlogs').then(data => data.json()).then(data => {
-                    const ws = new WebSocket('ws://localhost:8080');
+                    const ws = new WebSocket('ws://192.168.11.12:8080');
 
                     let serverStates = {
                         offline: '<span style="padding: 10px; margin: 10px; border-radius: 10px; background: red;"></span>',
